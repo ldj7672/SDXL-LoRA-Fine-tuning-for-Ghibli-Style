@@ -38,7 +38,7 @@ from diffusers.utils.import_utils import is_xformers_available
 from peft import LoraConfig, get_peft_model
 from peft.utils import get_peft_model_state_dict
 from diffusers.utils import convert_state_dict_to_diffusers
-from utils.datasets import ProductImageDataset, GhibliDataset
+from utils.ghibli_datasets import ProductImageDataset, GhibliDataset
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.24.0")

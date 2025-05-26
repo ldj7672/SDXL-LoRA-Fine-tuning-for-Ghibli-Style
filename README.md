@@ -4,6 +4,8 @@
 
 ## 실험 결과
 
+### 1. 베이스 모델과 LoRA 모델 비교
+
 베이스 모델과 LoRA fine-tuning 모델의 비교 결과입니다.
 
 ![Comparison Result](results/SDXL_ghibli_result_0.png)
@@ -12,6 +14,12 @@
 위 이미지에서 상단은 베이스 모델의 결과, 하단은 LoRA fine-tuning 모델의 결과를 보여줍니다.
 
 LoRA의 한계가 분명히 존재하지만, 100장이라는 적은 데이터셋으로도 지브리 스타일의 특성을 어느 정도 반영할 수 있음을 확인했습니다. 특히 색감, 선의 흐름, 전체적인 분위기 등에서 지브리 애니메이션 특유의 감성이 잘 표현되었습니다. 다만 LoRA 방식 특성상, 인물이나 객체의 형태가 무너지는 경우도 일부 발생합니다.
+
+### 2. LoRA 파라미터 실험 결과
+
+다음은 다양한 LoRA rank와 alpha 값 조합에 따른 실험 결과입니다.
+
+![Experiment Results](results/exp_result.png)
 
 ## 실험 환경
 
@@ -88,6 +96,8 @@ This project explores fine-tuning Stable Diffusion XL (SDXL) using LoRA to gener
 
 ## Experimental Results
 
+### 1. Base Model vs LoRA Model Comparison
+
 Comparison between base model and LoRA fine-tuned model.
 
 ![Comparison Result](results/SDXL_ghibli_result_0.png)
@@ -95,7 +105,13 @@ Comparison between base model and LoRA fine-tuned model.
 
 The image above shows base model results (top) and LoRA fine-tuned model results (bottom).
 
-While the limitations of LoRA are evident, our experiments demonstrate that even with a small dataset of 100 images, the model can capture certain characteristics of the Ghibli style. The generated images show promising results in terms of color palette, line flow, and overall atmosphere, reflecting distinctive elements of Studio Ghibli's animation style. However, due to the nature of LoRA, there are some cases where the form of characters or objects may break down.
+LoRA's limitations are evident, but our experiments demonstrate that even with a small dataset of 100 images, the model can capture certain characteristics of the Ghibli style. The generated images show promising results in terms of color palette, line flow, and overall atmosphere, reflecting distinctive elements of Studio Ghibli's animation style. However, due to the nature of LoRA, there are some cases where the form of characters or objects may break down.
+
+### 2. LoRA Parameter Experiment Results
+
+Different experiment results based on different LoRA rank and alpha combinations.
+
+![Experiment Results](results/exp_result.png)
 
 ## Project Structure
 

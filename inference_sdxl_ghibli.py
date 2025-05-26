@@ -56,7 +56,9 @@ def parse_args():
                     'A cozy kitchen where a grandmother is baking bread with help from tiny forest spirits, Ghibli-inspired.',
                     'A mysterious black cat sitting on a rooftop watching over a rainy town, drawn like a Ghibli scene.',
                     'A child and a large fluffy creature sitting together under a giant mushroom during the rain, Ghibli-style.',
-                    'A peaceful mountain village during a lantern festival at night, full of warm lights and soft details, Ghibli aesthetic.'],
+                    'A peaceful mountain village during a lantern festival at night, full of warm lights and soft details, Ghibli aesthetic.',
+                    'An elderly couple walking their dog in a snowy forest, in Ghibli style.',
+                    ],
         help="List of text prompts for image generation. If provided, will use these instead of single prompt.",
     )
     parser.add_argument(
@@ -104,7 +106,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default=None,
+        default="output_visualization",
         help="Directory to save generated images. If not specified, will be created in the parent directory of lora_model_path.",
     )
     parser.add_argument(
@@ -118,6 +120,24 @@ def parse_args():
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device to run inference on.",
+    )
+    parser.add_argument(
+        "--run_base_inference",
+        action='store_true',
+        default=False,
+        help="Whether to run base model inference or use saved results.",
+    )
+    parser.add_argument(
+        "--base_results_dir",
+        type=str,
+        default="output_visualization/base_model_results",
+        help="Directory containing saved base model results.",
+    )
+    parser.add_argument(
+        "--create_comparison_grid",
+        action='store_true',
+        default=False,
+        help="Whether to create comparison grid images.",
     )
     
     args = parser.parse_args()
@@ -217,8 +237,10 @@ def save_metadata(args, timestamp, base_paths, lora_paths, comparison_path, prom
         "timestamp": timestamp,
         "base_model_images": [os.path.basename(path) for path in base_paths],
         "lora_model_images": [os.path.basename(path) for path in lora_paths],
-        "comparison_grid": os.path.basename(comparison_path)
     }
+    
+    if comparison_path is not None:
+        metadata["comparison_grid"] = os.path.basename(comparison_path)
     
     metadata_file = os.path.join(args.output_dir, f"metadata_prompt{prompt_idx+1}_{timestamp}.json")
     with open(metadata_file, 'w', encoding='utf-8') as f:
@@ -258,13 +280,15 @@ def main():
     print(f"Size: {args.width}x{args.height}")
     print(f"Seed: {args.seed}")
     print(f"Number of images per model per prompt: {args.num_images}")
+    print(f"Run base inference: {args.run_base_inference}")
     
     try:
         print(f"\n{'='*80}")
         print("STEP 1: LOADING PIPELINES")
         print(f"{'='*80}")
         
-        base_pipeline = load_base_pipeline(args)
+        if args.run_base_inference:
+            base_pipeline = load_base_pipeline(args)
         lora_pipeline = load_lora_pipeline(args)
         
         all_results = []
@@ -278,33 +302,48 @@ def main():
             base_paths = []
             lora_paths = []
             
-            # Base 모델 이미지 생성
-            print(f"\n--- Generating {args.num_images} Base Model Images ---")
-            for i in range(args.num_images):
-                print(f"Generating base model image {i+1}/{args.num_images}...")
-                seed_for_image = args.seed + (prompt_idx * args.num_images) + i
+            # Base 모델 이미지 생성 또는 로드
+            if args.run_base_inference:
+                print(f"\n--- Generating {args.num_images} Base Model Images ---")
+                for i in range(args.num_images):
+                    print(f"Generating base model image {i+1}/{args.num_images}...")
+                    seed_for_image = args.seed + (prompt_idx * args.num_images) + i
+                    
+                    generator = torch.Generator(device=args.device).manual_seed(seed_for_image)
+                    
+                    base_image = base_pipeline(
+                        prompt=current_prompt,
+                        negative_prompt=args.negative_prompt,
+                        num_inference_steps=args.num_inference_steps,
+                        guidance_scale=args.guidance_scale,
+                        num_images_per_prompt=1,
+                        height=args.height,
+                        width=args.width,
+                        generator=generator,
+                    ).images[0]
+                    
+                    base_filename = f"base_prompt{prompt_idx+1}_{timestamp}_{i+1}.png"
+                    base_filepath = os.path.join(args.output_dir, base_filename)
+                    base_image.save(base_filepath)
+                    base_paths.append(base_filepath)
+                    print(f"  ✓ Saved base image: {base_filepath}")
+                    
+                    del base_image
+                    torch.cuda.empty_cache()
+            else:
+                print(f"\n--- Loading {args.num_images} Base Model Images ---")
+                # 베이스 모델 결과 디렉토리에서 해당 프롬프트의 이미지 파일들을 찾습니다
+                base_pattern = f"base_prompt{prompt_idx+1}_*.png"
+                base_files = sorted([f for f in os.listdir(args.base_results_dir) if f.startswith(f"base_prompt{prompt_idx+1}_")])
                 
-                generator = torch.Generator(device=args.device).manual_seed(seed_for_image)
+                if len(base_files) < args.num_images:
+                    raise FileNotFoundError(f"Not enough base model images found for prompt {prompt_idx+1}. Found {len(base_files)}, need {args.num_images}")
                 
-                base_image = base_pipeline(
-                    prompt=current_prompt,
-                    negative_prompt=args.negative_prompt,
-                    num_inference_steps=args.num_inference_steps,
-                    guidance_scale=args.guidance_scale,
-                    num_images_per_prompt=1,
-                    height=args.height,
-                    width=args.width,
-                    generator=generator,
-                ).images[0]
-                
-                base_filename = f"base_prompt{prompt_idx+1}_{timestamp}_{i+1}.png"
-                base_filepath = os.path.join(args.output_dir, base_filename)
-                base_image.save(base_filepath)
-                base_paths.append(base_filepath)
-                print(f"  ✓ Saved base image: {base_filepath}")
-                
-                del base_image
-                torch.cuda.empty_cache()
+                # 필요한 수만큼의 이미지를 선택합니다
+                for i in range(args.num_images):
+                    base_filepath = os.path.join(args.base_results_dir, base_files[i])
+                    base_paths.append(base_filepath)
+                    print(f"  ✓ Loaded base image: {base_filepath}")
             
             # LoRA 모델 이미지 생성
             print(f"\n--- Generating {args.num_images} LoRA Model Images ---")
@@ -338,7 +377,10 @@ def main():
             base_images = [Image.open(path) for path in base_paths]
             lora_images = [Image.open(path) for path in lora_paths]
             
-            comparison_path = create_comparison_grid(base_images, lora_images, args, timestamp, prompt_idx)
+            if args.create_comparison_grid:
+                comparison_path = create_comparison_grid(base_images, lora_images, args, timestamp, prompt_idx)
+            else:
+                comparison_path = None
             
             del base_images, lora_images
             torch.cuda.empty_cache()
@@ -359,7 +401,8 @@ def main():
             print(f"\n✓ COMPLETED PROMPT {prompt_idx + 1}/{len(prompts)}")
             print(f"  - Base images: {len(base_paths)}")
             print(f"  - LoRA images: {len(lora_paths)}")
-            print(f"  - Comparison grid: 1")
+            if args.create_comparison_grid:
+                print(f"  - Comparison grid: 1")
         
         print("\n" + "="*80)
         print("GENERATION COMPLETED SUCCESSFULLY!")

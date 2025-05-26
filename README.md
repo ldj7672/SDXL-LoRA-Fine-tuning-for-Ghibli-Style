@@ -44,7 +44,17 @@ LoRA의 한계가 분명히 존재하지만, 100장이라는 적은 데이터셋
 
 1. 학습 실행:
 ```bash
-./run_experiments.sh
+python train_sdxl_lora.py \
+    --pretrained_model_name_or_path="stabilityai/stable-diffusion-xl-base-1.0" \
+    --dataset_type="ghibli" \
+    --dataset_dir="dataset_ghibli" \
+    --output_dir="output_ghibli" \
+    --resolution=512 \
+    --train_batch_size=1 \
+    --num_train_epochs=100 \
+    --learning_rate=1e-4 \
+    --lora_rank=4 \
+    --lora_alpha=8.0
 ```
 
 2. 추론 실행:
@@ -106,7 +116,17 @@ While the limitations of LoRA are evident, our experiments demonstrate that even
 
 1. Run training:
 ```bash
-./run_experiments.sh
+python train_sdxl_lora.py \
+    --pretrained_model_name_or_path="stabilityai/stable-diffusion-xl-base-1.0" \
+    --dataset_type="ghibli" \
+    --dataset_dir="dataset_ghibli" \
+    --output_dir="output_ghibli" \
+    --resolution=512 \
+    --train_batch_size=1 \
+    --num_train_epochs=100 \
+    --learning_rate=1e-4 \
+    --lora_rank=4 \
+    --lora_alpha=8.0
 ```
 
 2. Run inference:
